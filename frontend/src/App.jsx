@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import './App.css';
+import Dashboard from './Dashboard';
 
 const API = '/api/tasks';
 
@@ -49,6 +50,7 @@ function App() {
 
   const doneCount = tasks.filter((t) => t.completed).length;
   const pendingCount = tasks.length - doneCount;
+  const [page, setPage] = useState('tasks');
 
   return (
     <div className="app">
@@ -57,7 +59,18 @@ function App() {
         <p>Stay focused. Get things done.</p>
       </div>
 
-      <div className="card">
+      <nav className="nav">
+        <button className={`nav-btn ${page === 'tasks' ? 'active' : ''}`} onClick={() => setPage('tasks')}>
+          Tasks
+        </button>
+        <button className={`nav-btn ${page === 'dashboard' ? 'active' : ''}`} onClick={() => setPage('dashboard')}>
+          Dashboard
+        </button>
+      </nav>
+
+      {page === 'dashboard' && <Dashboard />}
+
+      {page === 'tasks' && <div className="card">
         <form className="form" onSubmit={addTask}>
           <input
             className="input"
@@ -103,7 +116,7 @@ function App() {
             ))
           )}
         </div>
-      </div>
+      </div>}
     </div>
   );
 }
