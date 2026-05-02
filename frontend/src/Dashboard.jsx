@@ -16,90 +16,133 @@ function getServiceKey(name) {
   return null;
 }
 
-function ArchDiagram({ containers }) {
+function ArchDiagram({ containers, runtime }) {
   const stateOf = (key) => {
     const c = containers.find((c) => getServiceKey(c.name) === key);
     return c?.state === 'running';
   };
+  const dot    = (r) => r ? '#34d399' : '#f87171';
+  const shadow = (r) => r ? 'drop-shadow(0 0 8px #34d399)' : 'none';
 
-  const dot = (running) =>
-    running ? '#34d399' : '#f87171';
+  if (runtime === 'kubernetes') return <K8sDiagram stateOf={stateOf} dot={dot} shadow={shadow} />;
+  return <DockerDiagram stateOf={stateOf} dot={dot} shadow={shadow} />;
+}
 
-  const shadow = (running) =>
-    running ? 'drop-shadow(0 0 8px #34d399)' : 'none';
-
-  /*
-   * Layout (y positions):
-   *   Browser   : y=8,   h=36  → bottom=44
-   *   Frontend  : y=64,  h=68  → bottom=132   (gap 20px, arrow visible)
-   *   Backend   : y=172, h=68  → bottom=240   (gap 40px, arrow visible)
-   *   PG/Redis  : y=278, h=54  → bottom=332   (gap 38px, arrows visible)
-   */
+function Defs() {
   return (
-    <svg className="diagram-svg" viewBox="0 0 520 340" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-          <path d="M0,0 L0,6 L8,3 z" fill="rgba(255,255,255,0.3)" />
-        </marker>
-        <linearGradient id="gFront" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#60a5fa" stopOpacity="0.25" />
-          <stop offset="100%" stopColor="#60a5fa" stopOpacity="0.08" />
-        </linearGradient>
-        <linearGradient id="gBack" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#a78bfa" stopOpacity="0.25" />
-          <stop offset="100%" stopColor="#a78bfa" stopOpacity="0.08" />
-        </linearGradient>
-        <linearGradient id="gPg" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#34d399" stopOpacity="0.25" />
-          <stop offset="100%" stopColor="#34d399" stopOpacity="0.08" />
-        </linearGradient>
-        <linearGradient id="gRedis" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.25" />
-          <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.08" />
-        </linearGradient>
-      </defs>
+    <defs>
+      <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+        <path d="M0,0 L0,6 L8,3 z" fill="rgba(255,255,255,0.3)" />
+      </marker>
+      <linearGradient id="gFront" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#60a5fa" stopOpacity="0.25" /><stop offset="100%" stopColor="#60a5fa" stopOpacity="0.08" />
+      </linearGradient>
+      <linearGradient id="gBack" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#a78bfa" stopOpacity="0.25" /><stop offset="100%" stopColor="#a78bfa" stopOpacity="0.08" />
+      </linearGradient>
+      <linearGradient id="gPg" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#34d399" stopOpacity="0.25" /><stop offset="100%" stopColor="#34d399" stopOpacity="0.08" />
+      </linearGradient>
+      <linearGradient id="gRedis" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.25" /><stop offset="100%" stopColor="#f59e0b" stopOpacity="0.08" />
+      </linearGradient>
+    </defs>
+  );
+}
 
-      {/* Browser */}
+function DockerDiagram({ stateOf, dot, shadow }) {
+  return (
+    <svg className="diagram-svg" viewBox="0 0 520 340" fill="none">
+      <Defs />
       <rect x="195" y="8" width="130" height="36" rx="8" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
       <text x="260" y="30" textAnchor="middle" fontSize="11" fill="rgba(255,255,255,0.4)">Browser / Client</text>
-
-      {/* Arrow: Browser → Frontend (bottom=44 → top=64) */}
-      <line x1="260" y1="44" x2="260" y2="62" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeDasharray="4 3" markerEnd="url(#arrow)" />
-
-      {/* Frontend box  y=64 → bottom=132 */}
+      <line x1="260" y1="44" x2="260" y2="62" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeDasharray="4 3" markerEnd="url(#arr)" />
       <rect x="170" y="64" width="180" height="68" rx="14" fill="url(#gFront)" stroke="#60a5fa" strokeWidth="1.2" strokeOpacity="0.5" />
       <circle cx="194" cy="81" r="6" fill={dot(stateOf('frontend'))} style={{ filter: shadow(stateOf('frontend')) }} />
       <text x="210" y="86" className="node-label" fontSize="13" fill="#fff">Frontend</text>
       <text x="194" y="102" className="node-sublabel" fontSize="10.5" fill="rgba(255,255,255,0.45)">React + Nginx  ·  Port 3000</text>
       <text x="194" y="122" className="node-sublabel" fontSize="10" fill="#60a5fa">task-manager-frontend</text>
-
-      {/* Arrow: Frontend → Backend (bottom=132 → top=172) */}
-      <line x1="260" y1="132" x2="260" y2="170" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeDasharray="4 3" markerEnd="url(#arrow)" />
-
-      {/* Backend box  y=172 → bottom=240 */}
+      <line x1="260" y1="132" x2="260" y2="170" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeDasharray="4 3" markerEnd="url(#arr)" />
       <rect x="170" y="172" width="180" height="68" rx="14" fill="url(#gBack)" stroke="#a78bfa" strokeWidth="1.2" strokeOpacity="0.5" />
       <circle cx="194" cy="189" r="6" fill={dot(stateOf('backend'))} style={{ filter: shadow(stateOf('backend')) }} />
       <text x="210" y="194" className="node-label" fontSize="13" fill="#fff">Backend</text>
       <text x="194" y="210" className="node-sublabel" fontSize="10.5" fill="rgba(255,255,255,0.45)">Node.js + Express  ·  Port 5000</text>
       <text x="194" y="230" className="node-sublabel" fontSize="10" fill="#a78bfa">task-manager-backend</text>
-
-      {/* Arrow: Backend → Postgres (bottom-left=240 → top=278) */}
-      <line x1="220" y1="240" x2="120" y2="276" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeDasharray="4 3" markerEnd="url(#arrow)" />
-
-      {/* Arrow: Backend → Redis (bottom-right=240 → top=278) */}
-      <line x1="300" y1="240" x2="400" y2="276" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeDasharray="4 3" markerEnd="url(#arrow)" />
-
-      {/* Postgres box  y=278 → bottom=332 */}
+      <line x1="220" y1="240" x2="120" y2="276" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeDasharray="4 3" markerEnd="url(#arr)" />
+      <line x1="300" y1="240" x2="400" y2="276" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeDasharray="4 3" markerEnd="url(#arr)" />
       <rect x="30" y="278" width="180" height="54" rx="14" fill="url(#gPg)" stroke="#34d399" strokeWidth="1.2" strokeOpacity="0.5" />
       <circle cx="54" cy="295" r="6" fill={dot(stateOf('postgres'))} style={{ filter: shadow(stateOf('postgres')) }} />
       <text x="70" y="300" className="node-label" fontSize="13" fill="#fff">PostgreSQL</text>
       <text x="54" y="317" className="node-sublabel" fontSize="10.5" fill="rgba(255,255,255,0.45)">postgres:16  ·  Port 5432</text>
-
-      {/* Redis box  y=278 → bottom=332 */}
       <rect x="310" y="278" width="180" height="54" rx="14" fill="url(#gRedis)" stroke="#f59e0b" strokeWidth="1.2" strokeOpacity="0.5" />
       <circle cx="334" cy="295" r="6" fill={dot(stateOf('redis'))} style={{ filter: shadow(stateOf('redis')) }} />
       <text x="350" y="300" className="node-label" fontSize="13" fill="#fff">Redis</text>
       <text x="334" y="317" className="node-sublabel" fontSize="10.5" fill="rgba(255,255,255,0.45)">redis:7  ·  Port 6379</text>
+    </svg>
+  );
+}
+
+function K8sDiagram({ stateOf, dot, shadow }) {
+  const SvcBadge = ({ x, y, label, color }) => (
+    <>
+      <rect x={x} y={y} width="78" height="16" rx="4" fill={`${color}22`} stroke={color} strokeWidth="0.8" strokeOpacity="0.5" />
+      <text x={x + 39} y={y + 11} textAnchor="middle" fontSize="8.5" fontWeight="700" fill={color}>{label}</text>
+    </>
+  );
+
+  return (
+    <svg className="diagram-svg" viewBox="0 0 520 390" fill="none">
+      <Defs />
+
+      {/* Browser */}
+      <rect x="195" y="8" width="130" height="36" rx="8" fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+      <text x="260" y="30" textAnchor="middle" fontSize="11" fill="rgba(255,255,255,0.4)">Browser / Client</text>
+
+      {/* Arrow + NodePort label */}
+      <line x1="260" y1="44" x2="260" y2="66" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeDasharray="4 3" markerEnd="url(#arr)" />
+      <rect x="210" y="47" width="100" height="16" rx="4" fill="rgba(167,139,250,0.2)" stroke="#a78bfa" strokeWidth="0.8" />
+      <text x="260" y="58" textAnchor="middle" fontSize="8.5" fontWeight="700" fill="#a78bfa">NodePort :8080</text>
+
+      {/* Namespace boundary */}
+      <rect x="8" y="70" width="504" height="308" rx="14" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.18)" strokeWidth="1.2" strokeDasharray="8 4" />
+      <text x="22" y="87" fontSize="9.5" fontWeight="700" fill="rgba(255,255,255,0.35)" letterSpacing="1">NAMESPACE: task-manager</text>
+
+      {/* Frontend pod  y=92 → bottom=164 */}
+      <rect x="160" y="92" width="200" height="72" rx="14" fill="url(#gFront)" stroke="#60a5fa" strokeWidth="1.2" strokeOpacity="0.5" />
+      <circle cx="184" cy="111" r="6" fill={dot(stateOf('frontend'))} style={{ filter: shadow(stateOf('frontend')) }} />
+      <text x="200" y="116" className="node-label" fontSize="13" fill="#fff">Frontend Pod</text>
+      <text x="184" y="132" className="node-sublabel" fontSize="10" fill="rgba(255,255,255,0.45)">React + Nginx  ·  Port 80</text>
+      <text x="184" y="150" className="node-sublabel" fontSize="9.5" fill="#60a5fa">svc: frontend  (NodePort)</text>
+      <SvcBadge x={282} y={95} label="NodePort :80" color="#60a5fa" />
+
+      {/* Arrow Frontend → Backend */}
+      <line x1="260" y1="164" x2="260" y2="200" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeDasharray="4 3" markerEnd="url(#arr)" />
+
+      {/* Backend pod  y=200 → bottom=272 */}
+      <rect x="160" y="200" width="200" height="72" rx="14" fill="url(#gBack)" stroke="#a78bfa" strokeWidth="1.2" strokeOpacity="0.5" />
+      <circle cx="184" cy="219" r="6" fill={dot(stateOf('backend'))} style={{ filter: shadow(stateOf('backend')) }} />
+      <text x="200" y="224" className="node-label" fontSize="13" fill="#fff">Backend Pod</text>
+      <text x="184" y="240" className="node-sublabel" fontSize="10" fill="rgba(255,255,255,0.45)">Node.js + Express  ·  Port 5000</text>
+      <text x="184" y="258" className="node-sublabel" fontSize="9.5" fill="#a78bfa">svc: backend  (ClusterIP)</text>
+      <SvcBadge x={282} y={203} label="ClusterIP :5000" color="#a78bfa" />
+
+      {/* Arrows Backend → PG and Redis */}
+      <line x1="210" y1="272" x2="118" y2="308" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeDasharray="4 3" markerEnd="url(#arr)" />
+      <line x1="310" y1="272" x2="402" y2="308" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeDasharray="4 3" markerEnd="url(#arr)" />
+
+      {/* Postgres pod  y=308 → bottom=362 */}
+      <rect x="22" y="308" width="190" height="58" rx="14" fill="url(#gPg)" stroke="#34d399" strokeWidth="1.2" strokeOpacity="0.5" />
+      <circle cx="46" cy="325" r="6" fill={dot(stateOf('postgres'))} style={{ filter: shadow(stateOf('postgres')) }} />
+      <text x="62" y="330" className="node-label" fontSize="13" fill="#fff">PostgreSQL Pod</text>
+      <text x="46" y="346" className="node-sublabel" fontSize="9.5" fill="rgba(255,255,255,0.45)">postgres:16  ·  Port 5432</text>
+      <text x="46" y="360" className="node-sublabel" fontSize="9" fill="#34d399">svc: postgres  (ClusterIP)</text>
+
+      {/* Redis pod  y=308 → bottom=362 */}
+      <rect x="308" y="308" width="190" height="58" rx="14" fill="url(#gRedis)" stroke="#f59e0b" strokeWidth="1.2" strokeOpacity="0.5" />
+      <circle cx="332" cy="325" r="6" fill={dot(stateOf('redis'))} style={{ filter: shadow(stateOf('redis')) }} />
+      <text x="348" y="330" className="node-label" fontSize="13" fill="#fff">Redis Pod</text>
+      <text x="332" y="346" className="node-sublabel" fontSize="9.5" fill="rgba(255,255,255,0.45)">redis:7  ·  Port 6379</text>
+      <text x="332" y="360" className="node-sublabel" fontSize="9" fill="#f59e0b">svc: redis  (ClusterIP)</text>
     </svg>
   );
 }
@@ -210,7 +253,7 @@ export default function Dashboard() {
             </span>
           )}
         </div>
-        <ArchDiagram containers={containers} />
+        <ArchDiagram containers={containers} runtime={runtime} />
       </div>
 
       <div className="refresh-bar">
