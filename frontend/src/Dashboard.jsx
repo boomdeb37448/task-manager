@@ -119,6 +119,13 @@ function K8sDiagram({ stateOf, dot, shadow }) {
       <text x="184" y="271" className="node-sublabel" fontSize="9.5" fill="#a78bfa">svc: backend  (ClusterIP)</text>
       <text x="184" y="287" className="node-sublabel" fontSize="9" fill="rgba(255,255,255,0.2)">task-manager-backend</text>
 
+      {/* HPA indicator — right of Backend pod */}
+      <line x1="360" y1="256" x2="374" y2="256" stroke="#a78bfa" strokeWidth="0.8" strokeOpacity="0.5" strokeDasharray="3 2" />
+      <rect x="374" y="228" width="118" height="56" rx="8" fill="rgba(167,139,250,0.08)" stroke="#a78bfa" strokeWidth="0.8" strokeDasharray="3 2" />
+      <text x="433" y="244" textAnchor="middle" fontSize="9" fontWeight="700" fill="#a78bfa">HPA</text>
+      <text x="433" y="258" textAnchor="middle" fontSize="8.5" fill="rgba(255,255,255,0.45)">min: 1  ·  max: 3</text>
+      <text x="433" y="272" textAnchor="middle" fontSize="8" fill="rgba(255,255,255,0.3)">target CPU: 50%</text>
+
       {/* Arrows Backend → PG and Redis  gap=34px */}
       <line x1="210" y1="300" x2="117" y2="334" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeDasharray="4 3" markerEnd="url(#arr)" />
       <line x1="310" y1="300" x2="403" y2="334" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" strokeDasharray="4 3" markerEnd="url(#arr)" />
