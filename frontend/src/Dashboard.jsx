@@ -109,19 +109,27 @@ function ContainerCard({ container }) {
   const accent = SERVICE_MAP[key]?.color || '#a78bfa';
   const isRunning = container.state === 'running';
   const stateClass = isRunning ? 'running' : container.state;
-
-  const uptime = isRunning
-    ? container.status
-    : container.status;
+  const isK8s = container.runtime === 'kubernetes';
 
   return (
     <div className="container-card" style={{ borderColor: isRunning ? `${accent}30` : undefined }}>
       <div className="card-top">
-        <span className="card-name" style={{ color: accent }}>{container.name}</span>
+        <span className="card-name" style={{ color: accent }}>
+          {isK8s ? container.name.split('-')[0] : container.name}
+        </span>
         <span className={`state-badge ${stateClass}`}>
           <span className="state-dot" />
           {container.state}
         </span>
+      </div>
+
+      <div className="runtime-row">
+        <span className={`runtime-badge ${isK8s ? 'k8s' : 'docker'}`}>
+          {isK8s ? 'K8s Pod' : 'Docker'}
+        </span>
+        {isK8s && (
+          <span className="pod-name">{container.name}</span>
+        )}
       </div>
 
       <div className="card-detail">
@@ -130,7 +138,7 @@ function ContainerCard({ container }) {
       </div>
       <div className="card-detail">
         <span className="detail-label">Status</span>
-        <span className="detail-value">{uptime}</span>
+        <span className="detail-value">{container.status}</span>
       </div>
       {container.ports.length > 0 && (
         <div className="card-detail">
@@ -139,8 +147,10 @@ function ContainerCard({ container }) {
         </div>
       )}
       <div className="card-detail">
-        <span className="detail-label">ID</span>
-        <span className="detail-value" style={{ fontFamily: 'monospace', fontSize: '0.78rem' }}>{container.id}</span>
+        <span className="detail-label">{isK8s ? 'Restarts' : 'ID'}</span>
+        <span className="detail-value" style={!isK8s ? { fontFamily: 'monospace', fontSize: '0.78rem' } : {}}>
+          {isK8s ? container.restarts : container.id}
+        </span>
       </div>
 
       {container.stats && (
@@ -186,10 +196,20 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
+  const runtime = containers[0]?.runtime;
+  const runtimeLabel = runtime === 'kubernetes' ? 'Kubernetes' : runtime === 'docker' ? 'Docker' : null;
+
   return (
     <div className="dashboard">
       <div className="diagram-card">
-        <h2>Architecture</h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+          <h2 style={{ margin: 0 }}>Architecture</h2>
+          {runtimeLabel && (
+            <span className={`runtime-badge ${runtime === 'kubernetes' ? 'k8s' : 'docker'}`} style={{ fontSize: '0.8rem', padding: '4px 12px' }}>
+              {runtimeLabel}
+            </span>
+          )}
+        </div>
         <ArchDiagram containers={containers} />
       </div>
 
