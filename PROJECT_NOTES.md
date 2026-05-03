@@ -132,6 +132,36 @@ SVG diagram updated to show real Kubernetes concepts:
 
 ---
 
+## Phase 9 — Horizontal Pod Autoscaler (HPA)
+Configured the backend to auto-scale between 1–3 pods based on CPU load.
+
+**Changes made:**
+- `k8s/06-backend.yaml` — added resource requests (100m CPU, 128Mi memory) so HPA can calculate percentages
+- `k8s/09-hpa.yaml` — HPA: min 1 pod, max 3 pods, scale up when CPU > 50%
+- Architecture diagram updated to show HPA alongside the Backend pod
+
+**How it works:**
+1. metrics-server addon collects CPU/memory from each pod every 15s
+2. HPA checks metrics every 30s and calculates desired replicas
+3. If CPU > 50%: scale up immediately
+4. If CPU < 50%: wait 5-minute cooldown before scaling down (prevents flapping)
+
+**Enable metrics-server:**
+```bash
+minikube addons enable metrics-server
+```
+
+**What we observed during the test:**
+| Event | CPU | Replicas |
+|-------|-----|----------|
+| Idle | 3% | 1 |
+| Load test started | 206% | 1 → 3 (within ~75s) |
+| Load spread across 3 pods | 62% | 3 |
+| Load test stopped | 1% | 3 (cooldown) |
+| After 5-min cooldown | 3% | 3 → 1 |
+
+---
+
 ## Problems & Solutions
 
 | Problem | Solution |
@@ -173,4 +203,20 @@ kubectl scale deployment redis --replicas=1 -n task-manager
 
 # View logs
 kubectl logs -n task-manager deployment/backend
+
+# Check HPA status
+kubectl get hpa -n task-manager
+
+# Watch HPA in real time
+kubectl get hpa -n task-manager -w
+
+# Run a quick load test against backend
+kubectl run load-test -n task-manager --image=busybox --restart=Never -- \
+  /bin/sh -c "while true; do wget -q -O- http://backend:5000/api/tasks; done"
+
+# Stop the load test
+kubectl delete pod load-test -n task-manager
+
+# Check pod CPU/memory usage
+kubectl top pods -n task-manager
 ```
