@@ -56,7 +56,7 @@ function App() {
     <div className="app">
       <div className="header">
         <h1>Task Manager</h1>
-        <p>Stay focused. Get things done.</p>
+        <p>Stay focused. Get things done. — Deployed by CI/CD</p>
       </div>
 
       <nav className="nav">
