@@ -162,6 +162,44 @@ minikube addons enable metrics-server
 
 ---
 
+## Phase 10 — Ingress Controller
+Replaced NodePort on the frontend service with a proper nginx Ingress Controller.
+
+**What changed:**
+- `k8s/07-frontend.yaml` — Service changed from `NodePort` → `ClusterIP` (no longer directly exposed)
+- `k8s/10-ingress.yaml` — Ingress resource: routes all `/*` traffic to frontend service
+- systemd port-forward updated to target `ingress-nginx-controller` instead of `frontend`
+- Architecture diagram updated: Ingress Controller box shown above the namespace boundary
+
+**Before (NodePort):**
+```
+Browser → NodePort :8080 → Frontend Service (NodePort) → Frontend Pod
+```
+
+**After (Ingress):**
+```
+Browser → NodePort :8080 → Ingress Controller (nginx) → Frontend Service (ClusterIP) → Frontend Pod
+```
+
+**Why Ingress is better than NodePort:**
+- Single entry point for all traffic — no port per service
+- Can route by path or hostname (e.g. `/api` → backend, `/` → frontend)
+- Supports TLS termination in one place
+- Standard in production clusters (EKS, GKE, AKS all use it)
+
+**Key files:**
+- Ingress resource: `k8s/10-ingress.yaml`
+- Ingress controller lives in: `namespace: ingress-nginx` (installed via minikube addon)
+- systemd service: `/etc/systemd/system/k8s-portforward.service`
+
+**Fix needed for systemd:** kubectl needs `KUBECONFIG` explicitly set when run by systemd (minimal environment):
+```ini
+[Service]
+Environment="KUBECONFIG=/root/.kube/config"
+```
+
+---
+
 ## Problems & Solutions
 
 | Problem | Solution |
@@ -219,4 +257,12 @@ kubectl delete pod load-test -n task-manager
 
 # Check pod CPU/memory usage
 kubectl top pods -n task-manager
+
+# Check ingress
+kubectl get ingress -n task-manager
+kubectl describe ingress task-manager-ingress -n task-manager
+
+# Check ingress controller
+kubectl get pods -n ingress-nginx
+kubectl get svc -n ingress-nginx
 ```
