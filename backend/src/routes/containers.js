@@ -140,6 +140,7 @@ async function getK8sPods() {
       state,
       ports,
       restarts,
+      ready:   cs?.ready ?? false,
       runtime: 'kubernetes',
       stats:   null,
     };

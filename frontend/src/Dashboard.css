@@ -231,6 +231,18 @@
   font-weight: 500;
 }
 
+.chip.readiness.ready {
+  background: rgba(52, 211, 153, 0.12);
+  color: #34d399;
+  border: 1px solid rgba(52, 211, 153, 0.2);
+}
+
+.chip.readiness.not-ready {
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.25);
+}
+
 /* Detail rows */
 .pod-details { display: flex; flex-direction: column; }
 

@@ -178,6 +178,14 @@ function PodCard({ container, onRestart, onLogs, restarting }) {
       <div className="pod-badges">
         <span className={`chip runtime ${isK8s ? 'k8s' : 'docker'}`}>{isK8s ? 'K8s Pod' : 'Docker'}</span>
         {svc.role && <span className="chip role">{svc.role}</span>}
+        {isK8s && (
+          <span
+            className={`chip readiness ${container.ready ? 'ready' : 'not-ready'}`}
+            title={container.ready ? 'Readiness probe passing — pod is receiving traffic' : 'Readiness probe failing — pod is excluded from traffic'}
+          >
+            {container.ready ? '✓ Ready' : '✗ Not Ready'}
+          </span>
+        )}
       </div>
 
       {/* Details */}
