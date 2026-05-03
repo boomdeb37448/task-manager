@@ -200,6 +200,48 @@ Environment="KUBECONFIG=/root/.kube/config"
 
 ---
 
+## Phase 11 — CI/CD with GitHub Actions
+Every `git push` to `main` now automatically builds images and deploys to Kubernetes.
+
+**Why self-hosted runner?**
+The VM is on a private network (192.168.1.x) — GitHub's cloud runners can't SSH into it. A self-hosted runner runs ON the VM and connects OUT to GitHub, so no public access is needed.
+
+**Components:**
+- `.github/workflows/deploy.yml` — workflow definition
+- GitHub Actions runner service on VM: `/root/actions-runner/`
+- systemd service: `actions.runner.boomdeb37448-task-manager.vm-runner.service`
+
+**Workflow steps (runs on every push to main):**
+1. Checkout code (from GitHub to runner's workspace)
+2. Build frontend image (inside minikube's Docker context)
+3. Build backend image (inside minikube's Docker context)
+4. Apply K8s manifests (`kubectl apply -f k8s/`)
+5. Restart deployments (`kubectl rollout restart`)
+6. Wait for rollout to complete
+7. Verify pods are running
+
+**Pipeline runs in ~36 seconds.**
+
+**Runner setup commands (for reference):**
+```bash
+# On the VM
+mkdir -p /root/actions-runner && cd /root/actions-runner
+curl -sL https://github.com/actions/runner/releases/download/v2.323.0/actions-runner-linux-x64-2.323.0.tar.gz | tar xz
+RUNNER_ALLOW_RUNASROOT="1" ./config.sh \
+  --url https://github.com/boomdeb37448/task-manager \
+  --token <TOKEN_FROM_GITHUB> \
+  --name vm-runner --unattended --replace
+RUNNER_ALLOW_RUNASROOT="1" ./svc.sh install root
+RUNNER_ALLOW_RUNASROOT="1" ./svc.sh start
+```
+
+**Get a new registration token (tokens expire after 1 hour):**
+```bash
+gh api repos/boomdeb37448/task-manager/actions/runners/registration-token -X POST --jq '.token'
+```
+
+---
+
 ## Problems & Solutions
 
 | Problem | Solution |
