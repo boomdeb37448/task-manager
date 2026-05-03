@@ -242,6 +242,59 @@ gh api repos/boomdeb37448/task-manager/actions/runners/registration-token -X POS
 
 ---
 
+## Phase 12 — Health Checks (Liveness & Readiness Probes)
+Added probes to every service so Kubernetes knows when a pod is alive and when it's ready for traffic.
+
+**Two types of probes:**
+
+| Probe | Question K8s asks | Action on failure |
+|-------|-------------------|-------------------|
+| **Liveness** | "Is the pod still alive?" | Restart the container |
+| **Readiness** | "Is the pod ready to receive traffic?" | Remove from Service load balancer (no restart) |
+
+**Probe methods used:**
+- `httpGet` — sends an HTTP GET request; pass = 2xx/3xx response
+- `exec` — runs a command inside the container; pass = exit code 0
+
+**Changes per service:**
+
+| Service | Liveness | Readiness |
+|---------|----------|-----------|
+| **Frontend** | `httpGet /health` (nginx returns 200) | `httpGet /` (page loads) |
+| **Backend** | `httpGet /health` (always ok if running) | `httpGet /ready` (checks DB connection) |
+| **Postgres** | `exec pg_isready` | `exec pg_isready` |
+| **Redis** | `exec redis-cli ping` | `exec redis-cli ping` |
+
+**Backend `/ready` endpoint** checks the DB before saying it's ready:
+```js
+app.get('/ready', async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ status: 'ready', db: 'connected' });
+  } catch (err) {
+    res.status(503).json({ status: 'not ready', db: err.message });
+  }
+});
+```
+If the backend pod can't reach the database, K8s removes it from the load balancer — no traffic is sent to a pod that can't serve requests.
+
+**RBAC additions** (`k8s/08-rbac.yaml`):
+- Added `pods/log` (get) so backend can fetch logs via K8s API
+- Added `deployments` (get, patch) so backend can trigger rolling restarts
+
+**Dashboard changes:**
+- Each pod card now shows a **"✓ Ready" (green)** or **"✗ Not Ready" (amber)** chip
+- **Restart button** — triggers a K8s rolling restart by patching the deployment's `restartedAt` annotation
+- **Logs button** — opens a slide-in panel with the last 100 log lines, color-coded by severity
+
+**Important probe timing settings:**
+- `initialDelaySeconds` — how long to wait before the first probe (give the container time to start)
+- `periodSeconds` — how often to run the probe
+- `failureThreshold` — how many consecutive failures before acting
+- `timeoutSeconds` — how long to wait for a response
+
+---
+
 ## Problems & Solutions
 
 | Problem | Solution |
@@ -307,4 +360,15 @@ kubectl describe ingress task-manager-ingress -n task-manager
 # Check ingress controller
 kubectl get pods -n ingress-nginx
 kubectl get svc -n ingress-nginx
+
+# Check probe configuration on a pod
+kubectl describe pod -n task-manager -l app=backend | grep -A 12 "Liveness\|Readiness"
+
+# Check if backend /health and /ready endpoints work
+BACKEND_IP=$(kubectl get pod -n task-manager -l app=backend -o jsonpath="{.items[0].status.podIP}")
+curl -s http://$BACKEND_IP:5000/health
+curl -s http://$BACKEND_IP:5000/ready
+
+# See live probe events (restart/readiness failures show here)
+kubectl get events -n task-manager --sort-by='.lastTimestamp' | tail -20
 ```
